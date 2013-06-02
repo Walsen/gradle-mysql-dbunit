@@ -1,0 +1,52 @@
+import groovy.sql.Sql
+import org.dbunit.database.DatabaseConnection;
+import org.dbunit.database.IDatabaseConnection;
+import org.dbunit.dataset.IDataSet;
+import org.dbunit.dataset.xml.FlatXmlDataSet;
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath 'dbunit:dbunit:2.2', 'junit:junit:4.11'
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+configurations {
+   mysql    
+}
+
+dependencies {
+   mysql 'mysql:mysql-connector-java:5.1.25'
+}
+
+URLClassLoader loader = GroovyObject.class.classLoader
+configurations.mysql.each { File file -> loader.addURL(file.toURL()) }
+
+task listJars << {    
+    configurations.mysql.each { File file -> println file.name }
+}
+
+task listTables << {    
+    getConnection("small_dev").eachRow('show tables') { row -> println row[0] }
+}
+
+task generateDataSet << {
+    def IDatabaseConnection conn = new DatabaseConnection(getConnection("small_dev").connection)
+    def IDataSet fullDataSet = conn.createDataSet()
+    FlatXmlDataSet.write(fullDataSet, new FileOutputStream("full.xml"))
+}
+
+
+static Sql getConnection(db) {
+   def props = [user: 'appadmin', password: '543IA##', allowMultiQueries: 'true'] as Properties
+   def url = (db) ? 'jdbc:mysql://192.168.0.107:3306/'.plusd(db) : 'jdbc:mysql://192.168.0.107:3306/'
+   def driver = 'com.mysql.jdbc.Driver'
+   Sql.newInstance(url, props, driver)
+}
